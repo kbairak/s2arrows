@@ -90,7 +90,14 @@ int main(void) {
             continue;
         }
 
-        if (s_is_down) {
+        if (f_is_down && ! s_is_down) {
+            if (equal(&input, &f_up)) {
+                f_is_down = 0;
+                f_give_up = 0;
+                continue;
+            }
+
+        } else if (s_is_down) {
             // Something else happened while 's' was down
             if (equal(&input, &s_repeat)) {
                 // More 's', suppress
