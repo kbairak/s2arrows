@@ -13,6 +13,12 @@ MacOSX to Linux. With this plugin enabled, `s` acts as a modifier key. While
 `s` is pressed, the `h` `j` `k` `l` keys act as arrow keys, following the VI
 key bindings.
 
+It also makes the `s` + `f` combination as a different modifier that maps the
+`h`, `j`, `k` and `l` keys to `Home`, `Page Down`, `Page Up` and `End`
+respectively. This is very convenient for laptops since you will not be needing
+the fn combination anymore. And in general, it means your right hand will have
+to move even less often.
+
 ## Why?
 
 It's so nice in VIM that you don't have to lift your right hand to move to the
@@ -99,10 +105,6 @@ millisecond pass after every `s` key press.
 Another caveat is that with this plugin enabled, you lose the ability to hold
 the `s` key down and have the character repeat itself. From my experience, this
 has never been a problem for me.
-
-## TODOs
-
-- Map `s`+`f`+`h` `j` `k` `l` to `home`, `page down`, `page up` and `end`
 
 ## License
 
