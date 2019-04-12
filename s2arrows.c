@@ -4,15 +4,48 @@
 #include <unistd.h>
 #include <linux/input.h>
 
+/* - start [   ] -> Do nothing
+        - press  's' [s  ] -> Do nothing
+            - lift   's' [   ] -> Send 's'
+            - press  'f' [sf ] -> Do nothing
+                - lift   's' [f  ] -> Do nothing
+                - lift   'f' [s  ] -> Do nothing
+                - press  'h' [sfh] -> Send 'home'
+                    - lift   's' [fh ] -> Do nothing
+                    - lift   'f' [sh ] -> Do nothing
+                    - lift   'h' [sf ] -> Do nothing
+                    - repeat 'h' [sfh] -> Repeat 'home'
+            - press  'h' [sh ] -> Send 'left'
+                - lift   's' [h  ] -> Do nothing
+                - press  'f' [sfh] -> Do nothing
+                - lift   'h' [s  ] -> Lift 'left'
+                - repeat 'h' [sh ] -> Repeat 'left'
+        - press  'f' [f  ] -> Do nothing
+            - press  's' [sf ] -> Do nothing
+            - lift   'f' [   ] -> Send 'f'
+            - press  'h' [fh ] -> Do nothing
+                - press  's' [sfh] -> Do noting
+                - lift   'f' [h  ] -> Do nothing
+                - lift   'h' [f  ] -> Do nothing
+                - repeat 'h' [fh ] -> Do nothing
+        - press  'h' [h  ] -> Send 'h'
+            - press  's' [sh ] -> Do nothing
+            - press  'f' [fh ] -> Do nothing
+            - lift   'h' [   ] -> Lift 'h'
+            - repeat 'h' [h  ] -> Repeat 'h' */
+
 // clang-format off
+// Modifiers
 const struct input_event
     s_up     = {.type = EV_KEY, .code = KEY_S, .value = 0},
     s_down   = {.type = EV_KEY, .code = KEY_S, .value = 1},
     s_repeat = {.type = EV_KEY, .code = KEY_S, .value = 2},
     f_up     = {.type = EV_KEY, .code = KEY_F, .value = 0},
     f_down   = {.type = EV_KEY, .code = KEY_F, .value = 1},
-    f_repeat = {.type = EV_KEY, .code = KEY_F, .value = 2},
+    f_repeat = {.type = EV_KEY, .code = KEY_F, .value = 2};
 
+// Inputs
+const struct input_event
     h_up     = {.type = EV_KEY, .code = KEY_H, .value = 0},
     h_down   = {.type = EV_KEY, .code = KEY_H, .value = 1},
     h_repeat = {.type = EV_KEY, .code = KEY_H, .value = 2},
@@ -24,8 +57,10 @@ const struct input_event
     k_repeat = {.type = EV_KEY, .code = KEY_K, .value = 2},
     l_up     = {.type = EV_KEY, .code = KEY_L, .value = 0},
     l_down   = {.type = EV_KEY, .code = KEY_L, .value = 1},
-    l_repeat = {.type = EV_KEY, .code = KEY_L, .value = 2},
+    l_repeat = {.type = EV_KEY, .code = KEY_L, .value = 2};
 
+// s-mappings
+const struct input_event
     left_up      = {.type = EV_KEY, .code = KEY_LEFT,  .value = 0},
     left_down    = {.type = EV_KEY, .code = KEY_LEFT,  .value = 1},
     left_repeat  = {.type = EV_KEY, .code = KEY_LEFT,  .value = 2},
@@ -37,8 +72,10 @@ const struct input_event
     up_repeat    = {.type = EV_KEY, .code = KEY_UP,    .value = 2},
     right_up     = {.type = EV_KEY, .code = KEY_RIGHT, .value = 0},
     right_down   = {.type = EV_KEY, .code = KEY_RIGHT, .value = 1},
-    right_repeat = {.type = EV_KEY, .code = KEY_RIGHT, .value = 2},
+    right_repeat = {.type = EV_KEY, .code = KEY_RIGHT, .value = 2};
 
+// sf-mappings
+const struct input_event
     home_up         = {.type = EV_KEY, .code = KEY_HOME,     .value = 0},
     home_down       = {.type = EV_KEY, .code = KEY_HOME,     .value = 1},
     home_repeat     = {.type = EV_KEY, .code = KEY_HOME,     .value = 2},
@@ -50,15 +87,26 @@ const struct input_event
     pageup_repeat   = {.type = EV_KEY, .code = KEY_PAGEUP,   .value = 2},
     end_up          = {.type = EV_KEY, .code = KEY_END,      .value = 0},
     end_down        = {.type = EV_KEY, .code = KEY_END,      .value = 1},
-    end_repeat      = {.type = EV_KEY, .code = KEY_END,      .value = 2},
+    end_repeat      = {.type = EV_KEY, .code = KEY_END,      .value = 2};
 
+// Other
+const struct input_event
     syn = {.type = EV_SYN, .code = SYN_REPORT, .value = 0};
 // clang-format on
 
-int equal(const struct input_event *first, const struct input_event *second) {
-    return first->type == second->type && first->code == second->code &&
-           first->value == second->value;
-}
+const struct *modifiers[] = {&s_up, &s_down, &s_repeat, &f_up, &f_down,
+                             &f_repeat};
+const struct *inputs[] = {&h_up, &h_down, &h_repeat, &j_up, &j_down, &j_repeat,
+                          &k_up, &k_down, &k_repeat, &l_up, &l_down,
+                          &l_repeat};
+const struct *s_mappings[] = {&left_up, &left_down, &left_repeat, &down_up,
+                              &down_down, &down_repeat, &up_up, &up_down,
+                              &up_repeat, &right_up, &right_down,
+                              &right_repeat};
+const struct *sf_mappings[] = {&home_up, &home_down, &home_repeat,
+                               &pagedown_up, &pagedown_down, &pagedown_repeat,
+                               &pageup_up, &pageup_down, &pageup_repeat,
+                               &end_up, &end_down, &end_repeat};
 
 int read_event(struct input_event *event) {
     return fread(event, sizeof(struct input_event), 1, stdin) == 1;
@@ -69,11 +117,37 @@ void write_event(const struct input_event *event) {
         exit(EXIT_FAILURE);
 }
 
-int main(void) {
-    int s_is_down = 0, f_is_down = 0, s_give_up = 0, f_give_up = 0;
-    struct input_event input;
-    setbuf(stdin, NULL), setbuf(stdout, NULL);
+// Globals
+struct input_event input;
+int s_is_down = 0, f_is_down = 0, h_is_down = 0, j_is_down = 0, k_is_down = 0,
+    l_is_down = 0;
 
+// Checks
+int is_equal(const struct input_event *event) {
+    return input.type == right->type && input.code == right->code &&
+           input.value == right->value;
+}
+
+int hjkl_is_down() {
+    return hjkl_is_down || j_is_down || k_is_down || l_is_down;
+}
+
+int hjkl_down() {
+    return is_equal(&h_down) || is_equal(&j_down) || is_equal(&k_down) ||
+           is_equal(&l_down);
+}
+
+int index_of(struct input_event **array) {
+    for (int i = 0; i < 12; i++) {
+        if (is_equal(array[i], &input)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int main(void) {
+    setbuf(stdin, NULL), setbuf(stdout, NULL);
     while (read_event(&input)) {
         // Fluff
         if (input.type == EV_MSC && input.code == MSC_SCAN) {
@@ -84,130 +158,76 @@ int main(void) {
             continue;
         }
 
-        if (equal(&input, &s_down)) {
-            // 's' was pressed, mark and supress
-            s_is_down = 1;
-            continue;
-        }
-
-        if (f_is_down && ! s_is_down) {
-            if (equal(&input, &f_up)) {
-                f_is_down = 0;
-                f_give_up = 0;
-                continue;
+        // [   ]
+        if      (! s_is_down && ! f_is_down && ! hjkl_is_down()) {
+            if (is_equal(&s_down)) {
+                s_is_down = 1;
             }
-
-        } else if (s_is_down) {
-            // Something else happened while 's' was down
-            if (equal(&input, &s_repeat)) {
-                // More 's', suppress
-                continue;
-            }
-
-            if (equal(&input, &s_up)) {
-                // 's' was released
-                if (! s_give_up) {
-                    // Nothing else happened in the meantime, process 's'
-                    // normally
-                    write_event(&s_down);
-                    write_event(&syn);
-                    usleep(20000);
-                    write_event(&s_up);
-                }
-                s_is_down = 0;
-                s_give_up = 0;
-                continue;
-            }
-
-            // Something other than 's' happened
-            s_give_up = 1;
-
-            if (equal(&input, &f_down)) {
-                // 'f' was pressed, mark and supress
+            else if (is_equal(&f_down)) {
                 f_is_down = 1;
-                continue;
+                write_event($input);
             }
-
-            if (f_is_down) {
-                if (equal(&input, &f_up)) {
-                    if (! f_give_up) {
-                        // Nothing else happened in the meantime, process 'f'
-                        // normally
-                        write_event(&f_down);
-                        write_event(&syn);
-                        usleep(20000);
-                        write_event(&f_up);
-                    }
-                    f_is_down = 0;
-                    f_give_up = 0;
-                }
-
-                f_give_up = 1;
-
-                const struct input_event *mappings[12][2] = {
-                    {&h_up,     &home_up},
-                    {&h_down,   &home_down},
-                    {&h_repeat, &home_repeat},
-                    {&j_up,     &pagedown_up},
-                    {&j_down,   &pagedown_down},
-                    {&j_repeat, &pagedown_repeat},
-                    {&k_up,     &pageup_up},
-                    {&k_down,   &pageup_down},
-                    {&k_repeat, &pageup_repeat},
-                    {&l_up,     &end_up},
-                    {&l_down,   &end_down},
-                    {&l_repeat, &end_repeat},
-                };
-                int broke = 0;
-                for (int i = 0; i < 12; i++) {
-                    const struct input_event *from = mappings[i][0],
-                                             *to   = mappings[i][1];
-                    if (equal(&input, from)) {
-                        write_event(to);
-                        write_event(&syn);
-                        usleep(20000);
-                        broke = 1;
-                        break;
-                    }
-                }
-                if (broke) {
-                    continue;
-                }
-
-            } else {
-                const struct input_event *mappings[12][2] = {
-                    {&h_up,     &left_up},
-                    {&h_down,   &left_down},
-                    {&h_repeat, &left_repeat},
-                    {&j_up,     &down_up},
-                    {&j_down,   &down_down},
-                    {&j_repeat, &down_repeat},
-                    {&k_up,     &up_up},
-                    {&k_down,   &up_down},
-                    {&k_repeat, &up_repeat},
-                    {&l_up,     &right_up},
-                    {&l_down,   &right_down},
-                    {&l_repeat, &right_repeat},
-                };
-
-                int broke = 0;
-                for (int i = 0; i < 12; i++) {
-                    const struct input_event *from = mappings[i][0],
-                                             *to   = mappings[i][1];
-                    if (equal(&input, from)) {
-                        write_event(to);
-                        write_event(&syn);
-                        usleep(20000);
-                        broke = 1;
-                        break;
-                    }
-                }
-                if (broke) {
-                    continue;
-                }
+            else if (hjkl_down()) {
+                if (is_equal(&h_down))      { h_is_down = 1; }
+                else if (is_equal(&j_down)) { j_is_down = 1; }
+                else if (is_equal(&k_down)) { k_is_down = 1; }
+                else if (is_equal(&l_down)) { l_is_down = 1; }
+                write_event(&input);
+            }
+            else {
+                write_event(&input);
             }
         }
-
-        write_event(&input);
+        // [s  ]
+        else if (  s_is_down && ! f_is_down && ! hjkl_is_down()) {
+            if (is_equal(&s_up)) {
+                s_is_down = 0;
+                write_event(&s_down);
+                write_event(&syn);
+                usleep(10000);
+                write_event(&s_up);
+            }
+            else if (is_equal(&s_repeat)) {
+                // Do nothing
+            }
+            else if (is_equal(&f_down)) {
+                f_is_down = 1;
+            }
+            else if (hjkl_down()) {
+                if (is_equal(&h_down))      { h_is_down = 1; }
+                else if (is_equal(&j_down)) { j_is_down = 1; }
+                else if (is_equal(&k_down)) { k_is_down = 1; }
+                else if (is_equal(&l_down)) { l_is_down = 1; }
+                write_event(s_mappings[index_of(inputs)]);
+            }
+            else {
+                write_event($input)
+            }
+        }
+        // [ f ]
+        else if (! s_is_down &&   f_is_down && ! hjkl_is_down()) {
+            if (is_equal(&s_down)) {}
+            else if (is_equal(&f_up)) {}
+            else if (is_equal(&f_repeat)) {}
+            else if (hjkl_down()) {}
+        }
+        // [  h]
+        else if (! s_is_down && ! f_is_down &&   hjkl_is_down()) {
+        }
+        // [sf ]
+        else if (  s_is_down &&   f_is_down && ! hjkl_is_down()) {
+        }
+        // [s h]
+        else if (  s_is_down && ! f_is_down &&   hjkl_is_down()) {
+        }
+        // [ fh]
+        else if (! s_is_down &&   f_is_down &&   hjkl_is_down()) {
+        }
+        // [sfh]
+        else if (  s_is_down &&   f_is_down &&   hjkl_is_down()) {
+        }
+        else {
+            write_event(&input);
+        }
     }
 }
